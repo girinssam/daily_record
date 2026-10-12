@@ -15,7 +15,7 @@
 <style>
 :root{
   --paper:#F5F7FA; --grid:#E6EBF1; --ink:#1E2A44; --ink2:#55607A; --ink3:#8C95A5; --card:#FFFFFF; --line:#D8DEE7; --soft:#EEF2F7;
-  --pee:#E0B020; --poo:#8A5A3B; --drink:#4A8FC8; --food:#5E9A55; --med:#B2577F; --mood:#7D66B0; --period:#C43D4B; --act:#A3ACB9; --work:#5C6BC0; --nap:#8FB8DE; --night:#252D40;
+  --pee:#E0B020; --poo:#8A5A3B; --drink:#4A8FC8; --food:#7CBF66; --med:#F3D34A; --mood:#7D66B0; --period:#C43D4B; --act:#6FA8DC; --work:#E27A9C; --nap:#A3ACB9; --night:#252D40;
   --hl-food:#E0F0D9; --hl-med:#FBF1C4; --hl-work:#F9DDE6; --hl-act:#DCEBF8; --hl-sleep:#E9ECF0;
   --sans:'IBM Plex Sans KR','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif;
   --serif:'Gowun Batang','AppleMyungjo','Noto Serif KR',Georgia,serif;
@@ -23,13 +23,13 @@
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#6E7889; --work:#8592DE; --nap:#5E86AD; --night:#05070C;
+    --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#5E9AD0; --work:#D77C99; --nap:#6E7889; --med:#D9BC3A; --night:#05070C;
     --hl-food:#1E3020; --hl-med:#3A3420; --hl-work:#3A2230; --hl-act:#1B2A40; --hl-sleep:#272C35;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#6E7889; --work:#8592DE; --nap:#5E86AD; --night:#05070C;
+  --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#5E9AD0; --work:#D77C99; --nap:#6E7889; --med:#D9BC3A; --night:#05070C;
     --hl-food:#1E3020; --hl-med:#3A3420; --hl-work:#3A2230; --hl-act:#1B2A40; --hl-sleep:#272C35;
   color-scheme:dark;
 }
@@ -223,21 +223,21 @@ const KINDS = {
   pee:   {e:'🟡', n:'소변',  c:'--pee',   lane:2},
   urge:  {e:'⚡', n:'요의',  c:'--pee',   lane:2},
   poo:   {e:'🟤', n:'대변',  c:'--poo',   lane:3},
-  drink: {e:'💦', n:'마심',  c:'--drink', lane:1},
+  drink: {e:'🥤', n:'Drink', c:'--drink', lane:1},
   food:  {e:'🍚', n:'식사',  c:'--food',  lane:1},
   med:   {e:'💊', n:'약',    c:'--med',   lane:1},
   mood:  {e:'💭', n:'기분',  c:'--mood',  lane:4},
   wake:  {e:'☀️', n:'기상',  c:'--ink3',  lane:0},
   sleep: {e:'🌙', n:'취침',  c:'--ink3',  lane:0},
   period:{e:'🩸', n:'생리',  c:'--period',lane:4},
-  work:  {e:'💼', n:'업무',  c:'--work',  lane:0},
+  work:  {e:'💻', n:'업무',  c:'--work',  lane:0},
   act:   {e:'📝', n:'개인활동', c:'--act', lane:0},
   nap:   {e:'😴', n:'낮잠',  c:'--nap',   lane:0},
 };
 const QUICK = ['pee','urge','poo','drink','food','med','mood','work','act','nap','wake','sleep','period'];
 const RANGE = ['act','work','nap']; // 시작~끝 시각이 있는 종류
 const WORK_RE = /수업|강의|업무|회의|상담|세션|서류|채점|원고|근무|출장|일함|일했/;
-const EMOJI = [['🟡','pee'],['⚡','urge'],['🟤','poo'],['💩','poo'],['💦','drink'],['💧','drink'],['🍚','food'],['🍽️','food'],['🍽','food'],['💊','med'],['☀️','wake'],['☀','wake'],['🌅','wake'],['🌙','sleep'],['💭','mood'],['🩸','period'],['📝','act'],['💼','work'],['😴','nap'],['💤','nap']];
+const EMOJI = [['🥤','drink'],['💻','work'],['🖥️','work'],['🟡','pee'],['⚡','urge'],['🟤','poo'],['💩','poo'],['💦','drink'],['💧','drink'],['🍚','food'],['🍽️','food'],['🍽','food'],['💊','med'],['☀️','wake'],['☀','wake'],['🌅','wake'],['🌙','sleep'],['💭','mood'],['🩸','period'],['📝','act'],['💼','work'],['😴','nap'],['💤','nap']];
 const LANES = ['활동','섭취','소변','대변','기분'];
 const HL = {food:'food', med:'med', work:'work', act:'act', wake:'sleep', sleep:'sleep', nap:'sleep'}; // 목록 형광펜 색
 const BRISTOL = ['','따로따로 딱딱한 덩어리','울퉁불퉁 뭉친 소시지','표면이 갈라진 소시지','매끈하고 부드러운 소시지','경계가 분명한 부드러운 조각','흐물흐물한 죽 같은 변','덩어리 없는 물 같은 변'];
@@ -542,7 +542,7 @@ function markSVG(en, X, laneY, S){
   const ex=pills(en);
   const tip=`<title>${esc((timeLabel(en)||'시각 없음')+' '+K.n+(en.note?' · '+en.note:'')+(ex.length?' ('+ex.join(', ')+')':''))}</title>`;
   const base=`class="mk" data-id="${en.id}"`;
-  const ring = r => en.approx ? `<circle cx="${x}" cy="${y}" r="${r+3*S}" fill="none" stroke="${col}" stroke-width="1.3" stroke-dasharray="2.5 2" pointer-events="none"/>` : '';
+  const ring = () => '';
   switch(en.k){
     case 'pee': case 'poo': { const r=6*S;
       return ring(r)+`<circle ${base} cx="${x}" cy="${y}" r="${r}" fill="${col}">${tip}</circle>`; }
@@ -553,14 +553,14 @@ function markSVG(en, X, laneY, S){
     case 'food': { const z=10*S;
       return ring(z*0.7)+`<rect ${base} x="${x-z/2}" y="${y-z/2}" width="${z}" height="${z}" rx="2" fill="${col}">${tip}</rect>`; }
     case 'med': { const z=8*S;
-      return ring(z*0.75)+`<rect ${base} x="${x-z/2}" y="${y-z/2}" width="${z}" height="${z}" transform="rotate(45 ${x} ${y})" fill="${col}">${tip}</rect>`; }
+      return ring(z*0.75)+`<rect ${base} x="${x-z/2}" y="${y-z/2}" width="${z}" height="${z}" transform="rotate(45 ${x} ${y})" fill="${col}" stroke="#A8871A" stroke-width="1">${tip}</rect>`; }
     case 'mood': { const sc=en.d&&en.d.score, r=8*S;
       return ring(r)+`<g ${base}>${tip}<circle cx="${x}" cy="${y}" r="${r}" fill="${col}"/>${sc?`<text x="${x}" y="${y+3.5*S}" text-anchor="middle" style="font-size:${10*S}px" fill="#fff">${sc}</text>`:''}</g>`; }
     case 'period':
       return `<circle ${base} cx="${x}" cy="${y+7*S}" r="${4*S}" fill="${col}">${tip}</circle>`;
     case 'act': case 'work': case 'nap': {
       const w = en.e!=null ? Math.max(3, X(en.e)-x) : 3, h=14*S;
-      return `<rect ${base} x="${x}" y="${y-h/2}" width="${w}" height="${h}" rx="3" fill="${col}" fill-opacity=".9"${en.approx?' stroke="var(--ink2)" stroke-width="1.2" stroke-dasharray="3 2"':''}>${tip}</rect>`;
+      return `<rect ${base} x="${x}" y="${y-h/2}" width="${w}" height="${h}" rx="3" fill="${col}" fill-opacity=".9">${tip}</rect>`;
     }
     default: return '';
   }
@@ -685,10 +685,10 @@ function renderDay(){
     <div class="stat"><b>${s.poo}<small>회</small></b><span>대변${s.bs.length?' '+s.bs.join(','):''}</span></div>
     <div class="stat"><b>${s.moodMin!=null?s.moodMin:'–'}</b><span>최저 기분</span></div>
   </div>`;
-  const durs=[s.workMin?'💼 업무 '+durTxt(s.workMin):'', s.actMin?'📝 개인활동 '+durTxt(s.actMin):'', s.napMin?'😴 낮잠 '+durTxt(s.napMin):(s.naps?'😴 낮잠 '+s.naps+'번':'')].filter(Boolean);
+  const durs=[s.workMin?'💻 업무 '+durTxt(s.workMin):'', s.actMin?'📝 개인활동 '+durTxt(s.actMin):'', s.napMin?'😴 낮잠 '+durTxt(s.napMin):(s.naps?'😴 낮잠 '+s.naps+'번':'')].filter(Boolean);
   if(durs.length) h+=`<div class="hint" style="margin:6px 2px 0;font-size:13px">${durs.join('&nbsp;&nbsp;')}</div>`;
   h+=`<div class="panel" id="tl">${timelineSVG(day, mainWidth()-24)}
-      <div class="legend"><span><i style="background:var(--pee)"></i>소변</span><span><i style="border:2px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변</span><span><i style="background:var(--drink)"></i>마심</span><span><i style="background:var(--food);border-radius:2px"></i>식사</span><span><i style="background:var(--med);border-radius:1px"></i>약</span><span><i style="background:var(--mood)"></i>기분</span><span><i style="background:var(--work);border-radius:2px"></i>업무</span><span><i style="background:var(--act);border-radius:2px"></i>개인활동</span><span><i style="background:var(--nap);border-radius:2px"></i>낮잠</span><span>점선 테두리 = 대략적인 시각</span><span><i style="background:var(--night);border-radius:2px"></i>잠든 시간</span></div></div>`;
+      <div class="legend"><span><i style="background:var(--pee)"></i>소변</span><span><i style="border:2px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변</span><span><i style="background:var(--drink)"></i>Drink</span><span><i style="background:var(--food);border-radius:2px"></i>식사</span><span><i style="background:var(--med);border-radius:1px;box-shadow:inset 0 0 0 1px #A8871A"></i>약</span><span><i style="background:var(--mood)"></i>기분</span><span><i style="background:var(--work);border-radius:2px"></i>업무</span><span><i style="background:var(--act);border-radius:2px"></i>개인활동</span><span><i style="background:var(--nap);border-radius:2px"></i>낮잠</span><span><i style="background:var(--night);border-radius:2px"></i>잠든 시간</span></div></div>`;
   h+=`<div class="panel">`;
   if(!es.length){
     h+=`<div class="empty">아래 버튼을 누르거나 메모처럼 적어 보세요.<br>메모 앱에 적어 둔 내용을 통째로 붙여넣어도 돼요.</div>`;
