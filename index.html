@@ -15,19 +15,19 @@
 <style>
 :root{
   --paper:#F5F7FA; --grid:#E6EBF1; --ink:#1E2A44; --ink2:#55607A; --ink3:#8C95A5; --card:#FFFFFF; --line:#D8DEE7; --soft:#EEF2F7;
-  --pee:#E0B020; --poo:#8A5A3B; --drink:#4A8FC8; --food:#5E9A55; --med:#B2577F; --mood:#7D66B0; --period:#C43D4B; --act:#A3ACB9; --work:#5C6BC0; --nap:#8FB8DE;
+  --pee:#E0B020; --poo:#8A5A3B; --drink:#4A8FC8; --food:#5E9A55; --med:#B2577F; --mood:#7D66B0; --period:#C43D4B; --act:#A3ACB9; --work:#5C6BC0; --nap:#8FB8DE; --night:#252D40;
   --sans:'IBM Plex Sans KR','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif;
   --serif:'Gowun Batang','AppleMyungjo','Noto Serif KR',Georgia,serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#6E7889; --work:#8592DE; --nap:#5E86AD;
+    --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#6E7889; --work:#8592DE; --nap:#5E86AD; --night:#05070C;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#6E7889; --work:#8592DE; --nap:#5E86AD;
+  --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#6E7889; --work:#8592DE; --nap:#5E86AD; --night:#05070C;
   color-scheme:dark;
 }
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
@@ -42,6 +42,7 @@ body{
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--drink);outline-offset:2px}
 .wrap{max-width:680px;margin:0 auto;padding:0 14px 230px}
+@media (min-width:900px){.wrap{max-width:1180px;padding-left:24px;padding-right:24px}.bar .in{max-width:1180px!important}.stat b{font-size:24px}.stat span{font-size:13px}}
 
 /* 상단 */
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);padding:10px 0 8px;border-bottom:1px solid var(--line)}
@@ -71,6 +72,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 
 /* 타임라인 */
 svg text{font-family:var(--sans)}
+.night{fill:var(--night);opacity:.92}
 .gl{stroke:var(--line);stroke-width:1}
 .gl.minor{stroke-dasharray:2 3}
 .hl{fill:var(--ink3);font-size:10px}
@@ -84,7 +86,6 @@ svg text{font-family:var(--sans)}
 .diary li:last-child{border-bottom:0}
 .diary .em{width:22px;text-align:center;flex:none}
 .diary .tm{font-family:var(--serif);font-weight:700;min-width:58px;flex:none;font-variant-numeric:tabular-nums}
-.diary .tm.ap{color:var(--ink2);font-weight:400}
 .diary .tx{flex:1;font-family:var(--serif)}
 .diary .nt{color:var(--ink3);font-family:var(--sans);font-size:13px}
 .pill{display:inline-block;font-family:var(--sans);font-size:12px;padding:0 7px;border-radius:999px;background:var(--soft);color:var(--ink2);margin:0 4px 2px 0;line-height:20px}
@@ -524,36 +525,42 @@ function parseText(text, k){
 const st = { mode:'day', sel: todayKey(), edit:null, clock:null };
 
 /* ───── 그리기: 타임라인 ───── */
-function markSVG(en, X, laneY){
+function markSVG(en, X, laneY, S){
   const K=KINDS[en.k], x=X(en.m), y=laneY(K.lane);
-  const col=`var(${K.c})`, op=en.approx?0.5:1, dash=en.approx?' stroke-dasharray="2 2"':'';
+  const col=`var(${K.c})`;
+  const ex=pills(en);
+  const tip=`<title>${esc((timeLabel(en)||'시각 없음')+' '+K.n+(en.note?' · '+en.note:'')+(ex.length?' ('+ex.join(', ')+')':''))}</title>`;
   const base=`class="mk" data-id="${en.id}"`;
+  const ring = r => en.approx ? `<circle cx="${x}" cy="${y}" r="${r+3*S}" fill="none" stroke="${col}" stroke-width="1.3" stroke-dasharray="2.5 2" pointer-events="none"/>` : '';
   switch(en.k){
-    case 'pee': case 'poo':
-      return `<circle ${base} cx="${x}" cy="${y}" r="6" fill="${col}" fill-opacity="${op}" stroke="${col}" stroke-width="1"${dash}/>`;
-    case 'urge':
-      return `<circle ${base} cx="${x}" cy="${y}" r="5.5" fill="var(--card)" stroke="${col}" stroke-width="2"${dash}/>`;
-    case 'drink':
-      return `<circle ${base} cx="${x}" cy="${y}" r="5" fill="${col}" fill-opacity="${op}" stroke="${col}"${dash}/>`;
-    case 'food':
-      return `<rect ${base} x="${x-5}" y="${y-5}" width="10" height="10" rx="2" fill="${col}" fill-opacity="${op}" stroke="${col}"${dash}/>`;
-    case 'med':
-      return `<rect ${base} x="${x-4}" y="${y-4}" width="8" height="8" transform="rotate(45 ${x} ${y})" fill="${col}" fill-opacity="${op}" stroke="${col}"${dash}/>`;
-    case 'mood': {
-      const sc=en.d&&en.d.score;
-      return `<g ${base}><circle cx="${x}" cy="${y}" r="8" fill="${col}" fill-opacity="${op}"/>${sc?`<text x="${x}" y="${y+3.5}" text-anchor="middle" font-size="10" fill="#fff">${sc}</text>`:''}</g>`;
-    }
+    case 'pee': case 'poo': { const r=6*S;
+      return ring(r)+`<circle ${base} cx="${x}" cy="${y}" r="${r}" fill="${col}">${tip}</circle>`; }
+    case 'urge': { const r=5.5*S;
+      return ring(r)+`<circle ${base} cx="${x}" cy="${y}" r="${r}" fill="var(--card)" stroke="${col}" stroke-width="${2*S}">${tip}</circle>`; }
+    case 'drink': { const r=5*S;
+      return ring(r)+`<circle ${base} cx="${x}" cy="${y}" r="${r}" fill="${col}">${tip}</circle>`; }
+    case 'food': { const z=10*S;
+      return ring(z*0.7)+`<rect ${base} x="${x-z/2}" y="${y-z/2}" width="${z}" height="${z}" rx="2" fill="${col}">${tip}</rect>`; }
+    case 'med': { const z=8*S;
+      return ring(z*0.75)+`<rect ${base} x="${x-z/2}" y="${y-z/2}" width="${z}" height="${z}" transform="rotate(45 ${x} ${y})" fill="${col}">${tip}</rect>`; }
+    case 'mood': { const sc=en.d&&en.d.score, r=8*S;
+      return ring(r)+`<g ${base}>${tip}<circle cx="${x}" cy="${y}" r="${r}" fill="${col}"/>${sc?`<text x="${x}" y="${y+3.5*S}" text-anchor="middle" style="font-size:${10*S}px" fill="#fff">${sc}</text>`:''}</g>`; }
     case 'period':
-      return `<circle ${base} cx="${x}" cy="${y+7}" r="4" fill="${col}" fill-opacity="${op}"/>`;
+      return `<circle ${base} cx="${x}" cy="${y+7*S}" r="${4*S}" fill="${col}">${tip}</circle>`;
     case 'act': case 'work': case 'nap': {
-      const w = en.e!=null ? Math.max(3, X(en.e)-x) : 3;
-      return `<rect ${base} x="${x}" y="${y-7}" width="${w}" height="14" rx="3" fill="${col}" fill-opacity="${en.approx?0.45:0.85}"/>`;
+      const w = en.e!=null ? Math.max(3, X(en.e)-x) : 3, h=14*S;
+      return `<rect ${base} x="${x}" y="${y-h/2}" width="${w}" height="${h}" rx="3" fill="${col}" fill-opacity=".9"${en.approx?' stroke="var(--ink2)" stroke-width="1.2" stroke-dasharray="3 2"':''}>${tip}</rect>`;
     }
     default: return '';
   }
 }
+function sleepBounds(es){
+  const wake=es.find(x=>x.k==='wake'), sl=es.filter(x=>x.k==='sleep').pop();
+  return {wake: wake?wake.m:null, sleep: (sl && (!wake || sl.m>wake.m)) ? sl.m : null};
+}
 function timelineSVG(day, W){
-  const L=38, R=10, laneH=28, top=22;
+  const S = W>=860 ? 1.45 : 1;
+  const L=38*S, R=10, laneH=28*S, top=22*S;
   const es = sorted(day.entries||[]);
   let s=6*60, e=22*60;
   es.forEach(x=>{ s=Math.min(s,x.m); e=Math.max(e, x.e!=null?x.e:x.m); });
@@ -561,32 +568,40 @@ function timelineSVG(day, W){
   const X = m => L + (m-s)/(e-s)*(W-L-R);
   const laneY = i => top + i*laneH + laneH/2;
   const H = top + LANES.length*laneH + 4;
-  const hrs=(e-s)/60, step = W<420 ? (hrs>14?3:2) : (hrs>18?2:1);
+  const hrs=(e-s)/60, step = W<420 ? (hrs>14?3:2) : W<860 ? (hrs>18?2:1) : 1;
+  const y1=top-4*S, y2=H-2;
   let o=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="하루 타임라인">`;
+  // 잠든 시간(기상 전·취침 후) 어둡게
+  const b=sleepBounds(es);
+  if(b.wake!=null && b.wake>s) o+=`<rect class="night" x="${X(s)}" y="${y1}" width="${X(b.wake)-X(s)}" height="${y2-y1}" rx="4"/>`;
+  if(b.sleep!=null && b.sleep<e) o+=`<rect class="night" x="${X(b.sleep)}" y="${y1}" width="${X(e)-X(b.sleep)}" height="${y2-y1}" rx="4"/>`;
   for(let h=s/60; h<=e/60; h++){
     const x=X(h*60), major=((h-s/60)%step===0);
-    o+=`<line class="gl${major?'':' minor'}" x1="${x}" x2="${x}" y1="${top-4}" y2="${H-2}"/>`;
-    if(major) o+=`<text class="hl" x="${x}" y="12" text-anchor="middle">${h%24}</text>`;
+    o+=`<line class="gl${major?'':' minor'}" x1="${x}" x2="${x}" y1="${y1}" y2="${y2}"/>`;
+    if(major) o+=`<text class="hl" x="${x}" y="${12*S}" text-anchor="middle" style="font-size:${10*S}px">${h%24}</text>`;
   }
-  LANES.forEach((n,i)=>{ o+=`<text class="lnl" x="0" y="${laneY(i)+4}">${n}</text>`; });
+  LANES.forEach((n,i)=>{ o+=`<text class="lnl" x="0" y="${laneY(i)+4*S}" style="font-size:${11*S}px">${n}</text>`; });
   es.filter(x=>x.k==='wake'||x.k==='sleep').forEach(x=>{
     const xx=X(x.m);
-    o+=`<line class="ws" x1="${xx}" x2="${xx}" y1="${top-2}" y2="${H-2}"/><text class="mk" data-id="${x.id}" x="${xx}" y="${laneY(0)+5}" text-anchor="middle" font-size="13">${KINDS[x.k].e}</text>`;
+    o+=`<line class="ws" x1="${xx}" x2="${xx}" y1="${y1}" y2="${y2}"/><text class="mk" data-id="${x.id}" x="${xx}" y="${laneY(0)+5*S}" text-anchor="middle" style="font-size:${13*S}px"><title>${fmtM(x.m)} ${KINDS[x.k].n}</title>${KINDS[x.k].e}</text>`;
   });
-  es.filter(x=>x.k!=='wake'&&x.k!=='sleep').forEach(x=>{ o+=markSVG(x,X,laneY); });
+  es.filter(x=>x.k!=='wake'&&x.k!=='sleep').forEach(x=>{ o+=markSVG(x,X,laneY,S); });
   return o+'</svg>';
 }
 function miniSVG(day, W){
   const s=5*60, e=26*60, L=2, R=2, H=24;
   const X = m => L + (Math.min(Math.max(m,s),e)-s)/(e-s)*(W-L-R);
   let o=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" aria-hidden="true">`;
+  const b=sleepBounds(sorted(day.entries||[]));
+  if(b.wake!=null) o+=`<rect class="night" x="${X(s)}" y="0" width="${X(b.wake)-X(s)}" height="${H}" rx="3"/>`;
+  if(b.sleep!=null) o+=`<rect class="night" x="${X(b.sleep)}" y="0" width="${X(e)-X(b.sleep)}" height="${H}" rx="3"/>`;
   for(let h=6; h<=26; h+=2) o+=`<line class="gl minor" x1="${X(h*60)}" x2="${X(h*60)}" y1="0" y2="${H}"/>`;
   (day.entries||[]).forEach(x=>{
     const xx=X(x.m);
     if(x.k==='wake'||x.k==='sleep') o+=`<line class="ws" x1="${xx}" x2="${xx}" y1="0" y2="${H}"/>`;
-    else if(x.k==='pee') o+=`<circle cx="${xx}" cy="7" r="4" fill="var(--pee)" fill-opacity="${x.approx?.5:1}"/>`;
-    else if(x.k==='urge') o+=`<circle cx="${xx}" cy="7" r="3" fill="none" stroke="var(--pee)" stroke-width="1.5"/>`;
-    else if(x.k==='poo') o+=`<circle cx="${xx}" cy="17" r="4" fill="var(--poo)" fill-opacity="${x.approx?.5:1}"/>`;
+    else if(x.k==='pee') o+=`<circle cx="${xx}" cy="7" r="4" fill="var(--pee)"/>`;
+    else if(x.k==='urge') o+=`<circle cx="${xx}" cy="7" r="3" fill="var(--card)" stroke="var(--pee)" stroke-width="1.5"/>`;
+    else if(x.k==='poo') o+=`<circle cx="${xx}" cy="17" r="4" fill="var(--poo)"/>`;
     else if(x.k==='nap'){ const x2=X(x.e!=null?x.e:x.m+20); o+=`<rect x="${xx}" y="9" width="${Math.max(3,x2-xx)}" height="6" rx="2" fill="var(--nap)"/>`; }
     else if(x.k==='drink') o+=`<rect x="${xx-1}" y="10" width="2" height="4" fill="var(--drink)"/>`;
     else if(x.k==='period') o+=`<circle cx="${xx}" cy="12" r="2.5" fill="var(--period)"/>`;
@@ -627,7 +642,7 @@ function entryText(en){
 
 /* ───── 화면 ───── */
 const $ = id => document.getElementById(id);
-function mainWidth(){ return Math.max(280, Math.min(680, document.querySelector('.wrap').clientWidth-28-2)); }
+function mainWidth(){ const w=document.querySelector('.wrap'); const cs=getComputedStyle(w); return Math.max(280, w.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)-2); }
 
 function renderHeader(){
   const d=parseKey(st.sel), t=todayKey();
@@ -662,7 +677,7 @@ function renderDay(){
   const durs=[s.workMin?'💼 업무 '+durTxt(s.workMin):'', s.actMin?'📝 개인활동 '+durTxt(s.actMin):'', s.napMin?'😴 낮잠 '+durTxt(s.napMin):(s.naps?'😴 낮잠 '+s.naps+'번':'')].filter(Boolean);
   if(durs.length) h+=`<div class="hint" style="margin:6px 2px 0;font-size:13px">${durs.join('&nbsp;&nbsp;')}</div>`;
   h+=`<div class="panel" id="tl">${timelineSVG(day, mainWidth()-24)}
-      <div class="legend"><span><i style="background:var(--pee)"></i>소변</span><span><i style="border:2px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변</span><span><i style="background:var(--drink)"></i>마심</span><span><i style="background:var(--food);border-radius:2px"></i>식사</span><span><i style="background:var(--med);border-radius:1px"></i>약</span><span><i style="background:var(--mood)"></i>기분</span><span><i style="background:var(--work);border-radius:2px"></i>업무</span><span><i style="background:var(--act);border-radius:2px"></i>개인활동</span><span><i style="background:var(--nap);border-radius:2px"></i>낮잠</span><span>흐린 표시 = 대략적인 시각</span></div></div>`;
+      <div class="legend"><span><i style="background:var(--pee)"></i>소변</span><span><i style="border:2px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변</span><span><i style="background:var(--drink)"></i>마심</span><span><i style="background:var(--food);border-radius:2px"></i>식사</span><span><i style="background:var(--med);border-radius:1px"></i>약</span><span><i style="background:var(--mood)"></i>기분</span><span><i style="background:var(--work);border-radius:2px"></i>업무</span><span><i style="background:var(--act);border-radius:2px"></i>개인활동</span><span><i style="background:var(--nap);border-radius:2px"></i>낮잠</span><span>점선 테두리 = 대략적인 시각</span><span><i style="background:var(--night);border-radius:2px"></i>잠든 시간</span></div></div>`;
   h+=`<div class="panel">`;
   if(!es.length){
     h+=`<div class="empty">아래 버튼을 누르거나 메모처럼 적어 보세요.<br>메모 앱에 적어 둔 내용을 통째로 붙여넣어도 돼요.</div>`;
@@ -697,7 +712,7 @@ function renderWeek(){
   }
   const av=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'–';
   let h=`<div class="panel"><div class="strip" style="cursor:default"><span></span>${hourAxis(W)}</div>${strips}
-    <div class="legend"><span><i style="background:var(--pee)"></i>소변 (위)</span><span><i style="border:1.5px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변 (아래)</span><span><i style="background:var(--nap);border-radius:2px"></i>낮잠</span><span>점선 = 기상·취침</span></div></div>`;
+    <div class="legend"><span><i style="background:var(--pee)"></i>소변 (위)</span><span><i style="border:1.5px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변 (아래)</span><span><i style="background:var(--nap);border-radius:2px"></i>낮잠</span><span><i style="background:var(--night);border-radius:2px"></i>잠든 시간</span></div></div>`;
   h+=`<div class="panel tblwrap"><table class="wk"><thead><tr><th>날짜</th><th>소변</th><th>밤</th><th>요의</th><th>최단 간격</th><th>대변</th><th>형태</th><th>복통</th><th>최저 기분</th><th>생리</th></tr></thead><tbody>${rows}
     <tr class="avg"><td>평균</td><td>${av(acc.pee)}</td><td>${av(acc.night)}</td><td>${av(acc.urge)}</td><td></td><td>${av(acc.poo)}</td><td></td><td></td><td>${av(acc.mood)}</td><td></td></tr></tbody></table>
     <div class="hint">기분은 그날 기록한 점수 중 가장 낮은 값이에요(1 매우 나쁨 ~ 5 매우 좋음). 날짜를 누르면 그날로 이동해요.</div></div>`;
@@ -748,7 +763,11 @@ function renderMonth(){
 function render(){
   renderHeader();
   if(st.mode==='day') renderDay(); else if(st.mode==='week') renderWeek(); else renderMonth();
-  if(st.edit) renderSheet();
+  if(st.edit && !typingInSheet()) renderSheet();
+}
+function typingInSheet(){
+  const a=document.activeElement;
+  return !!(a && a.closest && a.closest('#sheet') && /^(INPUT|TEXTAREA)$/.test(a.tagName) && a.type!=='range');
 }
 
 
@@ -872,6 +891,7 @@ function renderSheet(){
       <button class="chip" data-f="_approx" aria-pressed="${!!en.approx}">대략</button></div>
       ${st.clock?clockHTML():''}
       <div class="hint">시각을 누르면 시계가 열려요. 새벽 4시 전 시각은 이날 밤으로 계산해요.</div></div>`;
+  h+=`<div class="fld"><label for="fNote">메모</label><input type="text" id="fNote" value="${esc(en.note)}" placeholder="상황, 느낌, 먹은 것…"></div>`;
   if(en.k==='pee'){
     h+=`<div class="fld"><span class="lb">급박감</span>${chipRow('urg',[{v:0,l:'0 없음'},{v:1,l:'1'},{v:2,l:'2'},{v:3,l:'3 참기 힘듦'}],d.urg)}</div>`;
     h+=`<div class="fld"><span class="lb">양</span>${chipRow('vol',['적음','보통','많음'],d.vol)}</div>`;
@@ -900,7 +920,6 @@ function renderSheet(){
     h+=`<div class="fld"><span class="lb">양</span>${chipRow('flow',['적음','보통','많음'],d.flow)}</div>`;
     h+=`<div class="fld"><span class="lb">생리통</span>${rangeRow('cramps',10,d.cramps)}</div>`;
   }
-  h+=`<div class="fld"><label for="fNote">메모</label><input type="text" id="fNote" value="${esc(en.note)}" placeholder="상황, 느낌, 먹은 것…"></div>`;
   h+=`<div class="sheetbtns"><button class="danger" data-act="del">삭제</button><button class="primary" data-act="done">완료</button></div>`;
   $('sheet').innerHTML=h;
 }
@@ -1019,7 +1038,8 @@ document.addEventListener('click', ev=>{
   if(act==='settings') openSettings();
   if(act==='sync'){ if(!cfg) openSettings(); else { keyBad=false; flush().then(pull); } }
 });
-let rz=null; window.addEventListener('resize', ()=>{ clearTimeout(rz); rz=setTimeout(render,150); });
+let rz=null, lastW=window.innerWidth;
+window.addEventListener('resize', ()=>{ if(Math.abs(window.innerWidth-lastW)<2) return; lastW=window.innerWidth; clearTimeout(rz); rz=setTimeout(render,150); });
 
 initStore();
 })();
