@@ -15,22 +15,22 @@
 <style>
 :root{
   --paper:#F5F7FA; --grid:#E6EBF1; --ink:#1E2A44; --ink2:#55607A; --ink3:#8C95A5; --card:#FFFFFF; --line:#D8DEE7; --soft:#EEF2F7;
-  --pee:#E0B020; --poo:#8A5A3B; --drink:#4A8FC8; --food:#7CBF66; --med:#F3D34A; --mood:#7D66B0; --period:#C43D4B; --act:#6FA8DC; --work:#E27A9C; --nap:#A3ACB9; --night:#252D40;
-  --hl-food:#E0F0D9; --hl-med:#FBF1C4; --hl-work:#F9DDE6; --hl-act:#DCEBF8; --hl-sleep:#E9ECF0;
+  --pee:#E0B020; --poo:#8A5A3B; --drink:#4A8FC8; --food:#7CBF66; --med:#F3D34A; --mood:#7D66B0; --period:#C43D4B; --act:#6FA8DC; --work:#E27A9C; --nap:#A3ACB9; --move:#F0A050; --night:#252D40;
+  --hl-food:#E0F0D9; --hl-med:#FBF1C4; --hl-work:#F9DDE6; --hl-act:#DCEBF8; --hl-sleep:#E9ECF0; --hl-move:#FDE6CF;
   --sans:'IBM Plex Sans KR','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif;
   --serif:'Gowun Batang','AppleMyungjo','Noto Serif KR',Georgia,serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#5E9AD0; --work:#D77C99; --nap:#6E7889; --med:#D9BC3A; --night:#05070C;
-    --hl-food:#1E3020; --hl-med:#3A3420; --hl-work:#3A2230; --hl-act:#1B2A40; --hl-sleep:#272C35;
+    --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#5E9AD0; --work:#D77C99; --nap:#6E7889; --med:#D9BC3A; --move:#E09048; --night:#05070C;
+    --hl-food:#1E3020; --hl-med:#3A3420; --hl-work:#3A2230; --hl-act:#1B2A40; --hl-sleep:#272C35; --hl-move:#3A2A1C;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#5E9AD0; --work:#D77C99; --nap:#6E7889; --med:#D9BC3A; --night:#05070C;
-    --hl-food:#1E3020; --hl-med:#3A3420; --hl-work:#3A2230; --hl-act:#1B2A40; --hl-sleep:#272C35;
+  --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#5E9AD0; --work:#D77C99; --nap:#6E7889; --med:#D9BC3A; --move:#E09048; --night:#05070C;
+    --hl-food:#1E3020; --hl-med:#3A3420; --hl-work:#3A2230; --hl-act:#1B2A40; --hl-sleep:#272C35; --hl-move:#3A2A1C;
   color-scheme:dark;
 }
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
@@ -93,6 +93,7 @@ svg text{font-family:var(--sans)}
 .diary li.m-work{background:var(--hl-work)}
 .diary li.m-act{background:var(--hl-act)}
 .diary li.m-sleep{background:var(--hl-sleep)}
+.diary li.m-move{background:var(--hl-move)}
 .diary li.mark .pill{background:var(--card)}
 .diary .em{width:22px;text-align:center;flex:none}
 .diary .tm{font-family:var(--serif);font-weight:700;min-width:58px;flex:none;font-variant-numeric:tabular-nums}
@@ -233,13 +234,17 @@ const KINDS = {
   work:  {e:'💻', n:'업무',  c:'--work',  lane:0},
   act:   {e:'📝', n:'개인활동', c:'--act', lane:0},
   nap:   {e:'😴', n:'낮잠',  c:'--nap',   lane:0},
+  move:  {e:'🚶', n:'이동',  c:'--move',  lane:0},
 };
-const QUICK = ['pee','urge','poo','drink','food','med','mood','work','act','nap','wake','sleep','period'];
-const RANGE = ['act','work','nap']; // 시작~끝 시각이 있는 종류
+const QUICK = ['pee','urge','poo','drink','food','med','mood','work','act','move','nap','wake','sleep','period'];
+const RANGE = ['act','work','nap','move'];
+const MOVES = ['도보','버스','지하철','기차','택시','자가용','기타'];
+const MOVE_EMOJI = {'🚌':'버스','🚍':'버스','🚇':'지하철','🚆':'기차','🚄':'기차','🚕':'택시','🚖':'택시','🚗':'자가용','🚙':'자가용'};
+const MOVE_RE = [[/도보|걸어|걸음|산책/,'도보'],[/버스/,'버스'],[/지하철|전철/,'지하철'],[/기차|KTX|SRT|ktx|srt|열차/,'기차'],[/택시/,'택시'],[/운전|자가용|차로|자차/,'자가용']]; // 시작~끝 시각이 있는 종류
 const WORK_RE = /수업|강의|업무|회의|상담|세션|서류|채점|원고|근무|출장|일함|일했/;
-const EMOJI = [['🥤','drink'],['💻','work'],['🖥️','work'],['🟡','pee'],['⚡','urge'],['🟤','poo'],['💩','poo'],['💦','drink'],['💧','drink'],['🍚','food'],['🍽️','food'],['🍽','food'],['💊','med'],['☀️','wake'],['☀','wake'],['🌅','wake'],['🌙','sleep'],['💭','mood'],['🩸','period'],['📝','act'],['💼','work'],['😴','nap'],['💤','nap']];
+const EMOJI = [['🚶‍♀️','move'],['🚶‍♂️','move'],['🚶','move'],['🚌','move'],['🚍','move'],['🚇','move'],['🚆','move'],['🚄','move'],['🚕','move'],['🚖','move'],['🚗','move'],['🚙','move'],['🥤','drink'],['💻','work'],['🖥️','work'],['🟡','pee'],['⚡','urge'],['🟤','poo'],['💩','poo'],['💦','drink'],['💧','drink'],['🍚','food'],['🍽️','food'],['🍽','food'],['💊','med'],['☀️','wake'],['☀','wake'],['🌅','wake'],['🌙','sleep'],['💭','mood'],['🩸','period'],['📝','act'],['💼','work'],['😴','nap'],['💤','nap']];
 const LANES = ['활동','섭취','소변','대변','기분'];
-const HL = {food:'food', med:'med', work:'work', act:'act', wake:'sleep', sleep:'sleep', nap:'sleep'}; // 목록 형광펜 색
+const HL = {food:'food', med:'med', work:'work', act:'act', wake:'sleep', sleep:'sleep', nap:'sleep', move:'move'}; // 목록 형광펜 색
 const BRISTOL = ['','따로따로 딱딱한 덩어리','울퉁불퉁 뭉친 소시지','표면이 갈라진 소시지','매끈하고 부드러운 소시지','경계가 분명한 부드러운 조각','흐물흐물한 죽 같은 변','덩어리 없는 물 같은 변'];
 const DRINKS = ['물','커피','차','에너지음료','우유·두유','탄산·주스','술','기타'];
 const EMOS = ['우울','불안','짜증','예민','무기력','눈물','기분 급변','폭식 욕구'];
@@ -291,7 +296,7 @@ function mutDay(k){ if(!days[k]) days[k]={date:k, entries:[], seq:0}; return day
 function summaryOf(k){
   const s=stats(getDay(k));
   return {pee:s.pee, urge:s.urge, night:s.night, minGap:s.minGap, poo:s.poo, bs:s.bs, pain:s.pain, ml:s.ml,
-          moodMin:s.moodMin, period:s.period, n:s.n, napMin:s.napMin, workMin:s.workMin, wake:s.wake?fmtM(s.wake.m):'', sleep:s.sleep?fmtM(s.sleep.m):''};
+          moodMin:s.moodMin, period:s.period, n:s.n, napMin:s.napMin, workMin:s.workMin, moveMin:s.moveMin, wake:s.wake?fmtM(s.wake.m):'', sleep:s.sleep?fmtM(s.sleep.m):''};
 }
 
 async function api(action, payload, conf){
@@ -473,7 +478,7 @@ function stats(day){
     period: of('period').length>0, wake, sleep,
     pain: Math.max(0,...poos.map(p=>(p.d&&p.d.pain)||0)),
     leak: pees.filter(p=>p.d&&p.d.leak).length,
-    workMin: dur('work'), actMin: dur('act'), napMin: dur('nap'), naps: of('nap').length
+    workMin: dur('work'), actMin: dur('act'), napMin: dur('nap'), moveMin: dur('move'), moves: of('move').length, naps: of('nap').length
   };
 }
 const durTxt = m => m>=60 ? Math.floor(m/60)+'시간'+(m%60?' '+m%60+'분':'') : m+'분';
@@ -482,6 +487,7 @@ const gapTxt = g => g==null?'–':(g>=60? Math.floor(g/60)+'시간 '+(g%60?g%60+
 /* ───── 메모 해석 ───── */
 function guessKind(s, hasRange){
   if(/낮잠/.test(s)) return 'nap';
+  if(/이동|도보|걸어서|버스|지하철|전철|기차|KTX|SRT|택시|운전|출근길|퇴근길/.test(s)) return 'move';
   if(/기상|일어남|일어났/.test(s)) return 'wake';
   if(/취침|잠듦|잠들|잠자리/.test(s)) return 'sleep';
   if(/요의|마려/.test(s)) return 'urge';
@@ -501,9 +507,10 @@ function parseText(text, k){
     if(/^\d{1,2}\/\d{1,2}\s*\([일월화수목금토]\)$/.test(s)) return; // '메모로 복사' 첫 줄(날짜)은 건너뜀
     const kinds=[];
     let found=true;
+    let how=null;
     while(found){
       found=false;
-      for(const [em,kk] of EMOJI){ if(s.startsWith(em)){ kinds.push(kk); s=s.slice(em.length).replace(/^\uFE0F/,'').trim(); found=true; break; } }
+      for(const [em,kk] of EMOJI){ if(s.startsWith(em)){ kinds.push(kk); if(MOVE_EMOJI[em]) how=MOVE_EMOJI[em]; s=s.slice(em.length).replace(/^\uFE0F/,'').trim(); found=true; break; } }
     }
     let m=null, e=null, approx=false, untimed=false;
     const tm = s.match(/^(\d{1,2})[:：](\d{2})(?:\s*[~\-–]\s*(\d{1,2})[:：](\d{2}))?\s*(경|쯤|추정)?/);
@@ -519,6 +526,7 @@ function parseText(text, k){
     if(!kinds.length) kinds.push(guessKind(s, e!=null));
     kinds.forEach(kk=>{
       const d={};
+      if(kk==='move'){ if(!how){ const f=MOVE_RE.find(r=>r[0].test(s)); if(f) how=f[1]; } if(how) d.how=how; }
       if(kk==='pee'){
         if(/적음|조금/.test(s)) d.vol='적음'; else if(/많음/.test(s)) d.vol='많음';
         const sym=[]; if(/잔뇨/.test(s)) sym.push('잔뇨감'); if(/통증|아프|아팠|아픔/.test(s)) sym.push('통증'); if(/화끈|따가|따끔/.test(s)) sym.push('화끈거림');
@@ -558,7 +566,7 @@ function markSVG(en, X, laneY, S){
       return ring(r)+`<g ${base}>${tip}<circle cx="${x}" cy="${y}" r="${r}" fill="${col}"/>${sc?`<text x="${x}" y="${y+3.5*S}" text-anchor="middle" style="font-size:${10*S}px" fill="#fff">${sc}</text>`:''}</g>`; }
     case 'period':
       return `<circle ${base} cx="${x}" cy="${y+7*S}" r="${4*S}" fill="${col}">${tip}</circle>`;
-    case 'act': case 'work': case 'nap': {
+    case 'act': case 'work': case 'nap': case 'move': {
       const w = en.e!=null ? Math.max(3, X(en.e)-x) : 3, h=14*S;
       return `<rect ${base} x="${x}" y="${y-h/2}" width="${w}" height="${h}" rx="3" fill="${col}" fill-opacity=".9">${tip}</rect>`;
     }
@@ -614,6 +622,7 @@ function miniSVG(day, W){
     else if(x.k==='urge') o+=`<circle cx="${xx}" cy="7" r="3" fill="var(--card)" stroke="var(--pee)" stroke-width="1.5"/>`;
     else if(x.k==='poo') o+=`<circle cx="${xx}" cy="17" r="4" fill="var(--poo)"/>`;
     else if(x.k==='nap'){ const x2=X(x.e!=null?x.e:x.m+20); o+=`<rect x="${xx}" y="9" width="${Math.max(3,x2-xx)}" height="6" rx="2" fill="var(--nap)"/>`; }
+    else if(x.k==='move'){ const x2=X(x.e!=null?x.e:x.m+15); o+=`<rect x="${xx}" y="20" width="${Math.max(3,x2-xx)}" height="3" rx="1.5" fill="var(--move)"/>`; }
     else if(x.k==='drink') o+=`<rect x="${xx-1}" y="10" width="2" height="4" fill="var(--drink)"/>`;
     else if(x.k==='period') o+=`<circle cx="${xx}" cy="12" r="2.5" fill="var(--period)"/>`;
   });
@@ -631,6 +640,7 @@ function hourAxis(W){
 function pills(en){
   const d=en.d||{}, p=[];
   if(en.k==='pee'){ if(d.urg!=null) p.push('급박감 '+d.urg); if(d.vol) p.push(d.vol); if(d.leak) p.push('샘'); (d.sym||[]).forEach(x=>p.push(x)); }
+  if(en.k==='move'){ if(d.how) p.push(d.how); }
   if(en.k==='urge'){ if(d.lv) p.push('강도 '+d.lv); if(d.out) p.push(d.out); }
   if(en.k==='poo'){ if(d.bs) p.push(d.bs+'형'); if(d.pain) p.push('복통 '+d.pain); }
   if(en.k==='drink'){ if(d.what) p.push(d.what); if(d.ml) p.push(d.ml+'ml'); }
@@ -685,10 +695,10 @@ function renderDay(){
     <div class="stat"><b>${s.poo}<small>회</small></b><span>대변${s.bs.length?' '+s.bs.join(','):''}</span></div>
     <div class="stat"><b>${s.moodMin!=null?s.moodMin:'–'}</b><span>최저 기분</span></div>
   </div>`;
-  const durs=[s.workMin?'💻 업무 '+durTxt(s.workMin):'', s.actMin?'📝 개인활동 '+durTxt(s.actMin):'', s.napMin?'😴 낮잠 '+durTxt(s.napMin):(s.naps?'😴 낮잠 '+s.naps+'번':'')].filter(Boolean);
+  const durs=[s.workMin?'💻 업무 '+durTxt(s.workMin):'', s.actMin?'📝 개인활동 '+durTxt(s.actMin):'', s.moveMin?'🚶 이동 '+durTxt(s.moveMin):(s.moves?'🚶 이동 '+s.moves+'번':''), s.napMin?'😴 낮잠 '+durTxt(s.napMin):(s.naps?'😴 낮잠 '+s.naps+'번':'')].filter(Boolean);
   if(durs.length) h+=`<div class="hint" style="margin:6px 2px 0;font-size:13px">${durs.join('&nbsp;&nbsp;')}</div>`;
   h+=`<div class="panel" id="tl">${timelineSVG(day, mainWidth()-24)}
-      <div class="legend"><span><i style="background:var(--pee)"></i>소변</span><span><i style="border:2px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변</span><span><i style="background:var(--drink)"></i>Drink</span><span><i style="background:var(--food);border-radius:2px"></i>식사</span><span><i style="background:var(--med);border-radius:1px;box-shadow:inset 0 0 0 1px #A8871A"></i>약</span><span><i style="background:var(--mood)"></i>기분</span><span><i style="background:var(--work);border-radius:2px"></i>업무</span><span><i style="background:var(--act);border-radius:2px"></i>개인활동</span><span><i style="background:var(--nap);border-radius:2px"></i>낮잠</span><span><i style="background:var(--night);border-radius:2px"></i>잠든 시간</span></div></div>`;
+      <div class="legend"><span><i style="background:var(--pee)"></i>소변</span><span><i style="border:2px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변</span><span><i style="background:var(--drink)"></i>Drink</span><span><i style="background:var(--food);border-radius:2px"></i>식사</span><span><i style="background:var(--med);border-radius:1px;box-shadow:inset 0 0 0 1px #A8871A"></i>약</span><span><i style="background:var(--mood)"></i>기분</span><span><i style="background:var(--work);border-radius:2px"></i>업무</span><span><i style="background:var(--act);border-radius:2px"></i>개인활동</span><span><i style="background:var(--nap);border-radius:2px"></i>낮잠</span><span><i style="background:var(--move);border-radius:2px"></i>이동</span><span><i style="background:var(--night);border-radius:2px"></i>잠든 시간</span></div></div>`;
   h+=`<div class="panel">`;
   if(!es.length){
     h+=`<div class="empty">아래 버튼을 누르거나 메모처럼 적어 보세요.<br>메모 앱에 적어 둔 내용을 통째로 붙여넣어도 돼요.</div>`;
@@ -723,7 +733,7 @@ function renderWeek(){
   }
   const av=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'–';
   let h=`<div class="panel"><div class="strip" style="cursor:default"><span></span>${hourAxis(W)}</div>${strips}
-    <div class="legend"><span><i style="background:var(--pee)"></i>소변 (위)</span><span><i style="border:1.5px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변 (아래)</span><span><i style="background:var(--nap);border-radius:2px"></i>낮잠</span><span><i style="background:var(--night);border-radius:2px"></i>잠든 시간</span></div></div>`;
+    <div class="legend"><span><i style="background:var(--pee)"></i>소변 (위)</span><span><i style="border:1.5px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변 (아래)</span><span><i style="background:var(--nap);border-radius:2px"></i>낮잠</span><span><i style="background:var(--move);border-radius:2px"></i>이동</span><span><i style="background:var(--night);border-radius:2px"></i>잠든 시간</span></div></div>`;
   h+=`<div class="panel tblwrap"><table class="wk"><thead><tr><th>날짜</th><th>소변</th><th>밤</th><th>요의</th><th>최단 간격</th><th>대변</th><th>형태</th><th>복통</th><th>최저 기분</th><th>생리</th></tr></thead><tbody>${rows}
     <tr class="avg"><td>평균</td><td>${av(acc.pee)}</td><td>${av(acc.night)}</td><td>${av(acc.urge)}</td><td></td><td>${av(acc.poo)}</td><td></td><td></td><td>${av(acc.mood)}</td><td></td></tr></tbody></table>
     <div class="hint">기분은 그날 기록한 점수 중 가장 낮은 값이에요(1 매우 나쁨 ~ 5 매우 좋음). 날짜를 누르면 그날로 이동해요.</div></div>`;
@@ -909,6 +919,9 @@ function renderSheet(){
     h+=`<div class="fld"><span class="lb">증상 (여러 개)</span>${chipRow('sym',['잔뇨감','통증','화끈거림','찔끔찔끔 나옴','줄기가 약함','금방 또 마려움'],d.sym,true)}</div>`;
     h+=`<div class="fld">${chipRow('leak',[{v:true,l:'화장실 가기 전에 샘'}],d.leak)}</div>`;
   }
+  if(en.k==='move'){
+    h+=`<div class="fld"><span class="lb">이동 수단</span>${chipRow('how',MOVES,d.how)}</div>`;
+  }
   if(en.k==='urge'){
     h+=`<div class="fld"><span class="lb">요의 강도</span>${chipRow('lv',[{v:1,l:'1 약함'},{v:2,l:'2'},{v:3,l:'3 참기 힘듦'}],d.lv)}</div>`;
     h+=`<div class="fld"><span class="lb">어떻게 됐나요</span>${chipRow('out',['참았음','사라짐','조금 뒤 화장실 감','샘'],d.out)}</div>`;
@@ -989,7 +1002,7 @@ $('quick').addEventListener('click', ev=>{
   const en={id:Math.random().toString(36).slice(2,10), k, m: isToday?nowM():12*60, e:null, approx:!isToday, untimed:false, note:'', d:{}, seq:++day.seq};
   day.entries.push(en); saveDay(dk); renderDay();
   if(!isToday){ openSheet(dk, en.id); st.clock=Object.assign({field:'m',phase:'h'}, mToClock(en.m)); renderSheet(); }
-  else if(['mood','period','act','work','nap'].includes(k)) openSheet(dk, en.id);
+  else if(['mood','period','act','work','nap','move'].includes(k)) openSheet(dk, en.id);
   else toast(KINDS[k].e+' '+fmtM(en.m)+' '+KINDS[k].n+' 기록했어요', ()=>openSheet(dk,en.id));
 });
 
