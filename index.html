@@ -15,19 +15,19 @@
 <style>
 :root{
   --paper:#F5F7FA; --grid:#E6EBF1; --ink:#1E2A44; --ink2:#55607A; --ink3:#8C95A5; --card:#FFFFFF; --line:#D8DEE7; --soft:#EEF2F7;
-  --pee:#E0B020; --poo:#8A5A3B; --drink:#4A8FC8; --food:#5E9A55; --med:#B2577F; --mood:#7D66B0; --period:#C43D4B; --act:#A3ACB9;
+  --pee:#E0B020; --poo:#8A5A3B; --drink:#4A8FC8; --food:#5E9A55; --med:#B2577F; --mood:#7D66B0; --period:#C43D4B; --act:#A3ACB9; --work:#5C6BC0; --nap:#8FB8DE;
   --sans:'IBM Plex Sans KR','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif;
   --serif:'Gowun Batang','AppleMyungjo','Noto Serif KR',Georgia,serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#6E7889;
+    --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#6E7889; --work:#8592DE; --nap:#5E86AD;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#6E7889;
+  --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#6E7889; --work:#8592DE; --nap:#5E86AD;
   color-scheme:dark;
 }
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
@@ -219,10 +219,14 @@ const KINDS = {
   wake:  {e:'☀️', n:'기상',  c:'--ink3',  lane:0},
   sleep: {e:'🌙', n:'취침',  c:'--ink3',  lane:0},
   period:{e:'🩸', n:'생리',  c:'--period',lane:4},
-  act:   {e:'📝', n:'활동',  c:'--act',   lane:0},
+  work:  {e:'💼', n:'업무',  c:'--work',  lane:0},
+  act:   {e:'📝', n:'개인활동', c:'--act', lane:0},
+  nap:   {e:'😴', n:'낮잠',  c:'--nap',   lane:0},
 };
-const QUICK = ['pee','urge','poo','drink','food','med','mood','wake','sleep','period','act'];
-const EMOJI = [['🟡','pee'],['⚡','urge'],['🟤','poo'],['💩','poo'],['💦','drink'],['💧','drink'],['🍚','food'],['🍽️','food'],['🍽','food'],['💊','med'],['☀️','wake'],['☀','wake'],['🌅','wake'],['🌙','sleep'],['💭','mood'],['🩸','period'],['📝','act']];
+const QUICK = ['pee','urge','poo','drink','food','med','mood','work','act','nap','wake','sleep','period'];
+const RANGE = ['act','work','nap']; // 시작~끝 시각이 있는 종류
+const WORK_RE = /수업|강의|업무|회의|상담|세션|서류|채점|원고|근무|출장|일함|일했/;
+const EMOJI = [['🟡','pee'],['⚡','urge'],['🟤','poo'],['💩','poo'],['💦','drink'],['💧','drink'],['🍚','food'],['🍽️','food'],['🍽','food'],['💊','med'],['☀️','wake'],['☀','wake'],['🌅','wake'],['🌙','sleep'],['💭','mood'],['🩸','period'],['📝','act'],['💼','work'],['😴','nap'],['💤','nap']];
 const LANES = ['활동','섭취','소변','대변','기분'];
 const BRISTOL = ['','따로따로 딱딱한 덩어리','울퉁불퉁 뭉친 소시지','표면이 갈라진 소시지','매끈하고 부드러운 소시지','경계가 분명한 부드러운 조각','흐물흐물한 죽 같은 변','덩어리 없는 물 같은 변'];
 const DRINKS = ['물','커피','차','에너지음료','우유·두유','탄산·주스','술','기타'];
@@ -275,7 +279,7 @@ function mutDay(k){ if(!days[k]) days[k]={date:k, entries:[], seq:0}; return day
 function summaryOf(k){
   const s=stats(getDay(k));
   return {pee:s.pee, urge:s.urge, night:s.night, minGap:s.minGap, poo:s.poo, bs:s.bs, pain:s.pain, ml:s.ml,
-          moodMin:s.moodMin, period:s.period, n:s.n, wake:s.wake?fmtM(s.wake.m):'', sleep:s.sleep?fmtM(s.sleep.m):''};
+          moodMin:s.moodMin, period:s.period, n:s.n, napMin:s.napMin, workMin:s.workMin, wake:s.wake?fmtM(s.wake.m):'', sleep:s.sleep?fmtM(s.sleep.m):''};
 }
 
 async function api(action, payload, conf){
@@ -446,6 +450,7 @@ function stats(day){
   const pm = pees.map(p=>p.m).sort((a,b)=>a-b);
   let minGap=null; for(let i=1;i<pm.length;i++){ const g=pm[i]-pm[i-1]; if(minGap===null||g<minGap) minGap=g; }
   const urges=of('urge');
+  const dur = k => of(k).reduce((t,e)=>t+(e.e!=null&&e.e>e.m?e.e-e.m:0),0);
   const drinks=of('drink');
   const ml = drinks.reduce((s,e)=>s+((e.d&&e.d.ml)||0),0);
   const moods = of('mood').map(e=>e.d&&e.d.score).filter(n=>n!=null);
@@ -455,21 +460,24 @@ function stats(day){
     moodMin: moods.length?Math.min(...moods):null, moodAvg: moods.length?moods.reduce((a,b)=>a+b,0)/moods.length:null,
     period: of('period').length>0, wake, sleep,
     pain: Math.max(0,...poos.map(p=>(p.d&&p.d.pain)||0)),
-    leak: pees.filter(p=>p.d&&p.d.leak).length
+    leak: pees.filter(p=>p.d&&p.d.leak).length,
+    workMin: dur('work'), actMin: dur('act'), napMin: dur('nap'), naps: of('nap').length
   };
 }
+const durTxt = m => m>=60 ? Math.floor(m/60)+'시간'+(m%60?' '+m%60+'분':'') : m+'분';
 const gapTxt = g => g==null?'–':(g>=60? Math.floor(g/60)+'시간 '+(g%60?g%60+'분':'') : g+'분');
 
 /* ───── 메모 해석 ───── */
 function guessKind(s, hasRange){
+  if(/낮잠/.test(s)) return 'nap';
   if(/기상|일어남|일어났/.test(s)) return 'wake';
   if(/취침|잠듦|잠들|잠자리/.test(s)) return 'sleep';
   if(/요의|마려/.test(s)) return 'urge';
-  if(hasRange) return 'act';
+  if(hasRange) return WORK_RE.test(s)?'work':'act';
   if(/약/.test(s)) return 'med';
   if(/물|커피|두유|우유|음료|핫식스|주스|맥주|술|라떼/.test(s)) return 'drink';
   if(/아침|점심|저녁|간식|야식|식사|먹(었|음|고|으)/.test(s)) return 'food';
-  return 'act';
+  return WORK_RE.test(s)?'work':'act';
 }
 function parseText(text, k){
   const day = mutDay(k);
@@ -499,8 +507,12 @@ function parseText(text, k){
     if(!kinds.length) kinds.push(guessKind(s, e!=null));
     kinds.forEach(kk=>{
       const d={};
-      if(kk==='pee'){ if(/적음|조금/.test(s)) d.vol='적음'; else if(/많음/.test(s)) d.vol='많음'; }
-      day.entries.push({id:Math.random().toString(36).slice(2,10), k:kk, m, e:(kk==='act'?e:null), approx, untimed, note:s, d, seq:++day.seq});
+      if(kk==='pee'){
+        if(/적음|조금/.test(s)) d.vol='적음'; else if(/많음/.test(s)) d.vol='많음';
+        const sym=[]; if(/잔뇨/.test(s)) sym.push('잔뇨감'); if(/통증|아프|아팠|아픔/.test(s)) sym.push('통증'); if(/화끈|따가|따끔/.test(s)) sym.push('화끈거림');
+        if(sym.length) d.sym=sym;
+      }
+      day.entries.push({id:Math.random().toString(36).slice(2,10), k:kk, m, e:(RANGE.includes(kk)?e:null), approx, untimed, note:s, d, seq:++day.seq});
       added++;
     });
   });
@@ -533,7 +545,7 @@ function markSVG(en, X, laneY){
     }
     case 'period':
       return `<circle ${base} cx="${x}" cy="${y+7}" r="4" fill="${col}" fill-opacity="${op}"/>`;
-    case 'act': {
+    case 'act': case 'work': case 'nap': {
       const w = en.e!=null ? Math.max(3, X(en.e)-x) : 3;
       return `<rect ${base} x="${x}" y="${y-7}" width="${w}" height="14" rx="3" fill="${col}" fill-opacity="${en.approx?0.45:0.85}"/>`;
     }
@@ -575,6 +587,7 @@ function miniSVG(day, W){
     else if(x.k==='pee') o+=`<circle cx="${xx}" cy="7" r="4" fill="var(--pee)" fill-opacity="${x.approx?.5:1}"/>`;
     else if(x.k==='urge') o+=`<circle cx="${xx}" cy="7" r="3" fill="none" stroke="var(--pee)" stroke-width="1.5"/>`;
     else if(x.k==='poo') o+=`<circle cx="${xx}" cy="17" r="4" fill="var(--poo)" fill-opacity="${x.approx?.5:1}"/>`;
+    else if(x.k==='nap'){ const x2=X(x.e!=null?x.e:x.m+20); o+=`<rect x="${xx}" y="9" width="${Math.max(3,x2-xx)}" height="6" rx="2" fill="var(--nap)"/>`; }
     else if(x.k==='drink') o+=`<rect x="${xx-1}" y="10" width="2" height="4" fill="var(--drink)"/>`;
     else if(x.k==='period') o+=`<circle cx="${xx}" cy="12" r="2.5" fill="var(--period)"/>`;
   });
@@ -591,7 +604,7 @@ function hourAxis(W){
 /* ───── 그리기: 목록 ───── */
 function pills(en){
   const d=en.d||{}, p=[];
-  if(en.k==='pee'){ if(d.urg!=null) p.push('급박감 '+d.urg); if(d.vol) p.push(d.vol); if(d.leak) p.push('샘'); }
+  if(en.k==='pee'){ if(d.urg!=null) p.push('급박감 '+d.urg); if(d.vol) p.push(d.vol); if(d.leak) p.push('샘'); (d.sym||[]).forEach(x=>p.push(x)); }
   if(en.k==='urge'){ if(d.lv) p.push('강도 '+d.lv); if(d.out) p.push(d.out); }
   if(en.k==='poo'){ if(d.bs) p.push(d.bs+'형'); if(d.pain) p.push('복통 '+d.pain); }
   if(en.k==='drink'){ if(d.what) p.push(d.what); if(d.ml) p.push(d.ml+'ml'); }
@@ -646,8 +659,10 @@ function renderDay(){
     <div class="stat"><b>${s.poo}<small>회</small></b><span>대변${s.bs.length?' '+s.bs.join(','):''}</span></div>
     <div class="stat"><b>${s.moodMin!=null?s.moodMin:'–'}</b><span>최저 기분</span></div>
   </div>`;
+  const durs=[s.workMin?'💼 업무 '+durTxt(s.workMin):'', s.actMin?'📝 개인활동 '+durTxt(s.actMin):'', s.napMin?'😴 낮잠 '+durTxt(s.napMin):(s.naps?'😴 낮잠 '+s.naps+'번':'')].filter(Boolean);
+  if(durs.length) h+=`<div class="hint" style="margin:6px 2px 0;font-size:13px">${durs.join('&nbsp;&nbsp;')}</div>`;
   h+=`<div class="panel" id="tl">${timelineSVG(day, mainWidth()-24)}
-      <div class="legend"><span><i style="background:var(--pee)"></i>소변</span><span><i style="border:2px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변</span><span><i style="background:var(--drink)"></i>마심</span><span><i style="background:var(--food);border-radius:2px"></i>식사</span><span><i style="background:var(--med);border-radius:1px"></i>약</span><span><i style="background:var(--mood)"></i>기분</span><span>흐린 표시 = 대략적인 시각</span></div></div>`;
+      <div class="legend"><span><i style="background:var(--pee)"></i>소변</span><span><i style="border:2px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변</span><span><i style="background:var(--drink)"></i>마심</span><span><i style="background:var(--food);border-radius:2px"></i>식사</span><span><i style="background:var(--med);border-radius:1px"></i>약</span><span><i style="background:var(--mood)"></i>기분</span><span><i style="background:var(--work);border-radius:2px"></i>업무</span><span><i style="background:var(--act);border-radius:2px"></i>개인활동</span><span><i style="background:var(--nap);border-radius:2px"></i>낮잠</span><span>흐린 표시 = 대략적인 시각</span></div></div>`;
   h+=`<div class="panel">`;
   if(!es.length){
     h+=`<div class="empty">아래 버튼을 누르거나 메모처럼 적어 보세요.<br>메모 앱에 적어 둔 내용을 통째로 붙여넣어도 돼요.</div>`;
@@ -682,7 +697,7 @@ function renderWeek(){
   }
   const av=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'–';
   let h=`<div class="panel"><div class="strip" style="cursor:default"><span></span>${hourAxis(W)}</div>${strips}
-    <div class="legend"><span><i style="background:var(--pee)"></i>소변 (위)</span><span><i style="border:1.5px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변 (아래)</span><span>점선 = 기상·취침</span></div></div>`;
+    <div class="legend"><span><i style="background:var(--pee)"></i>소변 (위)</span><span><i style="border:1.5px solid var(--pee)"></i>요의</span><span><i style="background:var(--poo)"></i>대변 (아래)</span><span><i style="background:var(--nap);border-radius:2px"></i>낮잠</span><span>점선 = 기상·취침</span></div></div>`;
   h+=`<div class="panel tblwrap"><table class="wk"><thead><tr><th>날짜</th><th>소변</th><th>밤</th><th>요의</th><th>최단 간격</th><th>대변</th><th>형태</th><th>복통</th><th>최저 기분</th><th>생리</th></tr></thead><tbody>${rows}
     <tr class="avg"><td>평균</td><td>${av(acc.pee)}</td><td>${av(acc.night)}</td><td>${av(acc.urge)}</td><td></td><td>${av(acc.poo)}</td><td></td><td></td><td>${av(acc.mood)}</td><td></td></tr></tbody></table>
     <div class="hint">기분은 그날 기록한 점수 중 가장 낮은 값이에요(1 매우 나쁨 ~ 5 매우 좋음). 날짜를 누르면 그날로 이동해요.</div></div>`;
@@ -693,7 +708,7 @@ function renderMonth(){
   const d=parseKey(st.sel), first=keyOf(new Date(d.getFullYear(),d.getMonth(),1,12));
   const start=weekStart(first), t=todayKey(), mon=st.sel.slice(0,7);
   let cells=['월','화','수','목','금','토','일'].map(x=>`<div class="h">${x}</div>`).join('');
-  const acc={days:0,urge:0,pee:[],night:[],poo:[],hard:0,norm:0,loose:0,mood:[],low:0,period:0,pain:0};
+  const acc={days:0,nap:0,urge:0,pee:[],night:[],poo:[],hard:0,norm:0,loose:0,mood:[],low:0,period:0,pain:0};
   for(let i=0;i<42;i++){
     const k=addDays(start,i); if(i>=35 && k.slice(0,7)!==mon) break;
     const day=getDay(k), s=stats(day), dd=parseKey(k);
@@ -703,7 +718,7 @@ function renderMonth(){
       ${s.n?`<span class="c">🟡${s.pee}</span><span class="c">🟤${s.poo}</span>`:''}
       ${moodCol?`<span class="mb" style="background:${moodCol}"></span>`:''}</button>`;
     if(k.slice(0,7)===mon && s.n){
-      acc.days++; acc.urge+=s.urge; if(s.pee) acc.pee.push(s.pee); if(s.night!=null) acc.night.push(s.night); acc.poo.push(s.poo);
+      acc.days++; acc.urge+=s.urge; if(s.naps) acc.nap++; if(s.pee) acc.pee.push(s.pee); if(s.night!=null) acc.night.push(s.night); acc.poo.push(s.poo);
       s.bs.forEach(b=>{ if(b<=2) acc.hard++; else if(b<=5) acc.norm++; else acc.loose++; });
       if(s.moodAvg!=null) acc.mood.push(s.moodAvg); if(s.moodMin!=null&&s.moodMin<=2) acc.low++;
       if(s.period) acc.period++; if(s.pain>0) acc.pain++;
@@ -724,6 +739,7 @@ function renderMonth(){
     <div><span>복통 있던 날</span><b>${acc.pain}일</b></div>
     <div><span>평균 기분</span><b>${av(acc.mood)}</b></div>
     <div><span>기분 저하일 (2 이하)</span><b>${acc.low}일</b></div>
+    <div><span>낮잠 잔 날</span><b>${acc.nap}일</b></div>
     <div><span>생리 기록일</span><b>${acc.period}일</b></div>
   </div>`;
   $('main').innerHTML=h;
@@ -852,13 +868,14 @@ function renderSheet(){
   h+=`<div class="fld"><span class="lb">종류</span>${chipRow('_k', Object.keys(KINDS).map(k=>({v:k,l:KINDS[k].e+' '+KINDS[k].n})), en.k)}</div>`;
   h+=`<div class="fld"><span class="lb">시각</span><div class="timerow">
       <button class="timebtn${st.clock&&st.clock.field==='m'?' on':''}" data-clock="m" aria-label="시각 바꾸기">${fmtM(en.m)}</button>
-      ${en.k==='act'?`<span>~</span><button class="timebtn${st.clock&&st.clock.field==='e'?' on':''}" data-clock="e" aria-label="끝 시각 바꾸기">${en.e!=null?fmtM(en.e):'끝 시각'}</button>${en.e!=null?'<button class="chip" data-clearend="1">끝 시각 지우기</button>':''}`:''}
+      ${RANGE.includes(en.k)?`<span>~</span><button class="timebtn${st.clock&&st.clock.field==='e'?' on':''}" data-clock="e" aria-label="끝 시각 바꾸기">${en.e!=null?fmtM(en.e):'끝 시각'}</button>${en.e!=null?'<button class="chip" data-clearend="1">끝 시각 지우기</button>':''}`:''}
       <button class="chip" data-f="_approx" aria-pressed="${!!en.approx}">대략</button></div>
       ${st.clock?clockHTML():''}
       <div class="hint">시각을 누르면 시계가 열려요. 새벽 4시 전 시각은 이날 밤으로 계산해요.</div></div>`;
   if(en.k==='pee'){
     h+=`<div class="fld"><span class="lb">급박감</span>${chipRow('urg',[{v:0,l:'0 없음'},{v:1,l:'1'},{v:2,l:'2'},{v:3,l:'3 참기 힘듦'}],d.urg)}</div>`;
     h+=`<div class="fld"><span class="lb">양</span>${chipRow('vol',['적음','보통','많음'],d.vol)}</div>`;
+    h+=`<div class="fld"><span class="lb">증상 (여러 개)</span>${chipRow('sym',['잔뇨감','통증','화끈거림','찔끔찔끔 나옴','줄기가 약함','금방 또 마려움'],d.sym,true)}</div>`;
     h+=`<div class="fld">${chipRow('leak',[{v:true,l:'화장실 가기 전에 샘'}],d.leak)}</div>`;
   }
   if(en.k==='urge'){
@@ -900,7 +917,7 @@ $('sheet').addEventListener('click', ev=>{
     day.entries=day.entries.filter(e=>e.id!==id); saveDay(k); closeSheet(); toast('지웠어요'); return;
   }
   const f=b.dataset.f; if(!f) return;
-  if(f==='_k'){ updEntry(en=>{ en.k=b.dataset.v; if(en.k!=='act') en.e=null; }); renderSheet(); return; }
+  if(f==='_k'){ updEntry(en=>{ en.k=b.dataset.v; if(!RANGE.includes(en.k)) en.e=null; }); renderSheet(); return; }
   if(f==='_approx'){ updEntry(en=>{ en.approx=!en.approx; en.untimed=false; }); renderSheet(); return; }
   const raw=b.dataset.v, val = raw==='true'?true : (/^\d+$/.test(raw)?Number(raw):raw);
   updEntry(en=>{
@@ -942,7 +959,7 @@ $('quick').addEventListener('click', ev=>{
   const en={id:Math.random().toString(36).slice(2,10), k, m: isToday?nowM():12*60, e:null, approx:!isToday, untimed:false, note:'', d:{}, seq:++day.seq};
   day.entries.push(en); saveDay(dk); renderDay();
   if(!isToday){ openSheet(dk, en.id); st.clock=Object.assign({field:'m',phase:'h'}, mToClock(en.m)); renderSheet(); }
-  else if(['mood','period','act'].includes(k)) openSheet(dk, en.id);
+  else if(['mood','period','act','work','nap'].includes(k)) openSheet(dk, en.id);
   else toast(KINDS[k].e+' '+fmtM(en.m)+' '+KINDS[k].n+' 기록했어요', ()=>openSheet(dk,en.id));
 });
 
