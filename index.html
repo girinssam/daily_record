@@ -16,6 +16,7 @@
 :root{
   --paper:#F5F7FA; --grid:#E6EBF1; --ink:#1E2A44; --ink2:#55607A; --ink3:#8C95A5; --card:#FFFFFF; --line:#D8DEE7; --soft:#EEF2F7;
   --pee:#E0B020; --poo:#8A5A3B; --drink:#4A8FC8; --food:#5E9A55; --med:#B2577F; --mood:#7D66B0; --period:#C43D4B; --act:#A3ACB9; --work:#5C6BC0; --nap:#8FB8DE; --night:#252D40;
+  --hl-food:#E0F0D9; --hl-med:#FBF1C4; --hl-work:#F9DDE6; --hl-act:#DCEBF8; --hl-sleep:#E9ECF0;
   --sans:'IBM Plex Sans KR','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif;
   --serif:'Gowun Batang','AppleMyungjo','Noto Serif KR',Georgia,serif;
   color-scheme:light;
@@ -23,11 +24,13 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#6E7889; --work:#8592DE; --nap:#5E86AD; --night:#05070C;
+    --hl-food:#1E3020; --hl-med:#3A3420; --hl-work:#3A2230; --hl-act:#1B2A40; --hl-sleep:#272C35;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#6E7889; --work:#8592DE; --nap:#5E86AD; --night:#05070C;
+    --hl-food:#1E3020; --hl-med:#3A3420; --hl-work:#3A2230; --hl-act:#1B2A40; --hl-sleep:#272C35;
   color-scheme:dark;
 }
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
@@ -84,6 +87,13 @@ svg text{font-family:var(--sans)}
 .diary{list-style:none;margin:0;padding:0}
 .diary li{display:flex;gap:10px;align-items:flex-start;padding:9px 4px;border-bottom:1px dashed var(--line);cursor:pointer}
 .diary li:last-child{border-bottom:0}
+.diary li.mark{border-bottom-color:transparent;border-radius:8px;margin:3px 0;padding-left:8px;padding-right:8px}
+.diary li.m-food{background:var(--hl-food)}
+.diary li.m-med{background:var(--hl-med)}
+.diary li.m-work{background:var(--hl-work)}
+.diary li.m-act{background:var(--hl-act)}
+.diary li.m-sleep{background:var(--hl-sleep)}
+.diary li.mark .pill{background:var(--card)}
 .diary .em{width:22px;text-align:center;flex:none}
 .diary .tm{font-family:var(--serif);font-weight:700;min-width:58px;flex:none;font-variant-numeric:tabular-nums}
 .diary .tx{flex:1;font-family:var(--serif)}
@@ -229,6 +239,7 @@ const RANGE = ['act','work','nap']; // 시작~끝 시각이 있는 종류
 const WORK_RE = /수업|강의|업무|회의|상담|세션|서류|채점|원고|근무|출장|일함|일했/;
 const EMOJI = [['🟡','pee'],['⚡','urge'],['🟤','poo'],['💩','poo'],['💦','drink'],['💧','drink'],['🍚','food'],['🍽️','food'],['🍽','food'],['💊','med'],['☀️','wake'],['☀','wake'],['🌅','wake'],['🌙','sleep'],['💭','mood'],['🩸','period'],['📝','act'],['💼','work'],['😴','nap'],['💤','nap']];
 const LANES = ['활동','섭취','소변','대변','기분'];
+const HL = {food:'food', med:'med', work:'work', act:'act', wake:'sleep', sleep:'sleep', nap:'sleep'}; // 목록 형광펜 색
 const BRISTOL = ['','따로따로 딱딱한 덩어리','울퉁불퉁 뭉친 소시지','표면이 갈라진 소시지','매끈하고 부드러운 소시지','경계가 분명한 부드러운 조각','흐물흐물한 죽 같은 변','덩어리 없는 물 같은 변'];
 const DRINKS = ['물','커피','차','에너지음료','우유·두유','탄산·주스','술','기타'];
 const EMOS = ['우울','불안','짜증','예민','무기력','눈물','기분 급변','폭식 욕구'];
@@ -684,7 +695,7 @@ function renderDay(){
   }else{
     h+='<ul class="diary">'+es.map(en=>{
       const K=KINDS[en.k], tl=timeLabel(en);
-      return `<li data-id="${en.id}"><span class="em">${K.e}</span><span class="tm${en.approx?' ap':''}">${tl||'<span class="nt">시각 없음</span>'}</span><span class="tx">${esc(entryText(en))} ${pills(en).map(p=>`<span class="pill">${esc(p)}</span>`).join('')}</span></li>`;
+      return `<li data-id="${en.id}"${HL[en.k]?` class="mark m-${HL[en.k]}"`:''}><span class="em">${K.e}</span><span class="tm${en.approx?' ap':''}">${tl||'<span class="nt">시각 없음</span>'}</span><span class="tx">${esc(entryText(en))} ${pills(en).map(p=>`<span class="pill">${esc(p)}</span>`).join('')}</span></li>`;
     }).join('')+'</ul>';
     h+=`<div class="rowbtns"><button class="ghost" data-act="copy">메모로 복사</button></div>`;
   }
