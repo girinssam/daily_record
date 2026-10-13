@@ -15,22 +15,22 @@
 <style>
 :root{
   --paper:#F5F7FA; --grid:#E6EBF1; --ink:#1E2A44; --ink2:#55607A; --ink3:#8C95A5; --card:#FFFFFF; --line:#D8DEE7; --soft:#EEF2F7;
-  --pee:#E0B020; --poo:#8A5A3B; --drink:#4A8FC8; --food:#7CBF66; --med:#F3D34A; --mood:#7D66B0; --period:#C43D4B; --act:#6FA8DC; --work:#E27A9C; --nap:#A3ACB9; --move:#F0A050; --night:#252D40;
-  --hl-food:#E0F0D9; --hl-med:#FBF1C4; --hl-work:#F9DDE6; --hl-act:#DCEBF8; --hl-sleep:#E9ECF0; --hl-move:#FDE6CF;
+  --pee:#E0B020; --poo:#8A5A3B; --drink:#4A8FC8; --food:#7CBF66; --med:#F3D34A; --mood:#7D66B0; --period:#C43D4B; --act:#4DB6A6; --work:#E27A9C; --nap:#A3ACB9; --move:#F0A050; --night:#252D40;
+  --hl-food:#E0F0D9; --hl-med:#FBF1C4; --hl-work:#F9DDE6; --hl-act:#D3F0EA; --hl-drink:#DCEBF8; --hl-sleep:#E9ECF0; --hl-move:#FDE6CF;
   --sans:'IBM Plex Sans KR','Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif;
   --serif:'Gowun Batang','AppleMyungjo','Noto Serif KR',Georgia,serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#5E9AD0; --work:#D77C99; --nap:#6E7889; --med:#D9BC3A; --move:#E09048; --night:#05070C;
-    --hl-food:#1E3020; --hl-med:#3A3420; --hl-work:#3A2230; --hl-act:#1B2A40; --hl-sleep:#272C35; --hl-move:#3A2A1C;
+    --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#3FA393; --work:#D77C99; --nap:#6E7889; --med:#D9BC3A; --move:#E09048; --night:#05070C;
+    --hl-food:#1E3020; --hl-med:#3A3420; --hl-work:#3A2230; --hl-act:#173330; --hl-drink:#1B2A40; --hl-sleep:#272C35; --hl-move:#3A2A1C;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#5E9AD0; --work:#D77C99; --nap:#6E7889; --med:#D9BC3A; --move:#E09048; --night:#05070C;
-    --hl-food:#1E3020; --hl-med:#3A3420; --hl-work:#3A2230; --hl-act:#1B2A40; --hl-sleep:#272C35; --hl-move:#3A2A1C;
+  --paper:#131821; --grid:#1B222D; --ink:#E5E9F1; --ink2:#AAB3C3; --ink3:#788293; --card:#1A202A; --line:#2B3442; --soft:#212835; --act:#3FA393; --work:#D77C99; --nap:#6E7889; --med:#D9BC3A; --move:#E09048; --night:#05070C;
+    --hl-food:#1E3020; --hl-med:#3A3420; --hl-work:#3A2230; --hl-act:#173330; --hl-drink:#1B2A40; --hl-sleep:#272C35; --hl-move:#3A2A1C;
   color-scheme:dark;
 }
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
@@ -92,6 +92,7 @@ svg text{font-family:var(--sans)}
 .diary li.m-med{background:var(--hl-med)}
 .diary li.m-work{background:var(--hl-work)}
 .diary li.m-act{background:var(--hl-act)}
+.diary li.m-drink{background:var(--hl-drink)}
 .diary li.m-sleep{background:var(--hl-sleep)}
 .diary li.m-move{background:var(--hl-move)}
 .diary li.mark .pill{background:var(--card)}
@@ -244,7 +245,7 @@ const MOVE_RE = [[/도보|걸어|걸음|산책/,'도보'],[/버스/,'버스'],[/
 const WORK_RE = /수업|강의|업무|회의|상담|세션|서류|채점|원고|근무|출장|일함|일했/;
 const EMOJI = [['🚶‍♀️','move'],['🚶‍♂️','move'],['🚶','move'],['🚌','move'],['🚍','move'],['🚇','move'],['🚆','move'],['🚄','move'],['🚕','move'],['🚖','move'],['🚗','move'],['🚙','move'],['🥤','drink'],['💻','work'],['🖥️','work'],['🟡','pee'],['⚡','urge'],['🟤','poo'],['💩','poo'],['💦','drink'],['💧','drink'],['🍚','food'],['🍽️','food'],['🍽','food'],['💊','med'],['☀️','wake'],['☀','wake'],['🌅','wake'],['🌙','sleep'],['💭','mood'],['🩸','period'],['📝','act'],['💼','work'],['😴','nap'],['💤','nap']];
 const LANES = ['활동','섭취','소변','대변','기분'];
-const HL = {food:'food', med:'med', work:'work', act:'act', wake:'sleep', sleep:'sleep', nap:'sleep', move:'move'}; // 목록 형광펜 색
+const HL = {drink:'drink', food:'food', med:'med', work:'work', act:'act', wake:'sleep', sleep:'sleep', nap:'sleep', move:'move'}; // 목록 형광펜 색
 const BRISTOL = ['','따로따로 딱딱한 덩어리','울퉁불퉁 뭉친 소시지','표면이 갈라진 소시지','매끈하고 부드러운 소시지','경계가 분명한 부드러운 조각','흐물흐물한 죽 같은 변','덩어리 없는 물 같은 변'];
 const DRINKS = ['물','커피','차','에너지음료','우유·두유','탄산·주스','술','기타'];
 const EMOS = ['우울','불안','짜증','예민','무기력','눈물','기분 급변','폭식 욕구'];
