@@ -51,6 +51,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);padding:10px 0 8px;border-bottom:1px solid var(--line)}
 .daterow{display:flex;align-items:center;gap:6px}
 .nav{width:40px;height:40px;border:1px solid var(--line);background:var(--card);border-radius:10px;font-size:20px;line-height:1}
+.todaybtn{height:40px;padding:0 14px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:10px;font-size:14px;font-weight:500;flex:none}
+.todaybtn[hidden]{display:none}
 .datebtn{flex:1;border:0;background:none;text-align:left;padding:2px 4px}
 .datebtn .main{font-family:var(--serif);font-size:24px;font-weight:700;letter-spacing:-.01em;display:block;line-height:1.2}
 .datebtn .sub{font-size:13px;color:var(--ink3)}
@@ -192,6 +194,7 @@ h2.sec{font-family:var(--serif);font-size:17px;margin:18px 2px 0;font-weight:700
     <div class="daterow">
       <button class="nav" data-act="prev" aria-label="이전">‹</button>
       <button class="datebtn" data-act="today" aria-label="오늘로 이동"><span class="main" id="dMain"></span><span class="sub" id="dSub"></span></button>
+      <button class="todaybtn" data-act="today" id="todayBtn" hidden>오늘</button>
       <button class="nav" data-act="next" aria-label="다음">›</button>
     </div>
     <nav class="tabs" aria-label="보기">
@@ -249,6 +252,21 @@ const HL = {drink:'drink', food:'food', med:'med', work:'work', act:'act', wake:
 const BRISTOL = ['','따로따로 딱딱한 덩어리','울퉁불퉁 뭉친 소시지','표면이 갈라진 소시지','매끈하고 부드러운 소시지','경계가 분명한 부드러운 조각','흐물흐물한 죽 같은 변','덩어리 없는 물 같은 변'];
 const DRINKS = ['물','커피','차','에너지음료','우유·두유','탄산·주스','술','기타'];
 const EMOS = ['우울','불안','짜증','예민','무기력','눈물','기분 급변','폭식 욕구'];
+// 직접 추가한 감정: 지금까지 기록에 쓴 감정 중 기본 목록에 없는 것 (많이 쓴 순)
+function customEmos(){
+  const cnt={};
+  Object.values(days).forEach(day=>(day.entries||[]).forEach(e=>{
+    if(e.k==='mood' && e.d && Array.isArray(e.d.tags)) e.d.tags.forEach(t=>{ if(t && !EMOS.includes(t)) cnt[t]=(cnt[t]||0)+1; });
+  }));
+  return Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||a.localeCompare(b,'ko'));
+}
+function addEmo(){
+  const inp=document.getElementById('fEmo'); if(!inp) return;
+  const ts=inp.value.split(/[,，|]/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean); // 쉼표로 여러 개
+  if(!ts.length) return;
+  updEntry(en=>{ const a=(en.d.tags||[]).slice(); ts.forEach(t=>{ if(!a.includes(t)) a.push(t); }); en.d.tags=a; });
+  renderSheet();
+}
 const DOW = ['일','월','화','수','목','금','토'];
 const NIGHT_CUT = 4; // 새벽 4시 전은 전날 밤으로
 
@@ -681,6 +699,9 @@ function renderHeader(){
     sub = st.sel.slice(0,7)===t.slice(0,7)?'이번 달':'';
   }
   $('dMain').textContent=main; $('dSub').textContent=sub;
+  const onToday = st.mode==='day' ? st.sel===t : st.mode==='week' ? weekStart(st.sel)===weekStart(t) : st.sel.slice(0,7)===t.slice(0,7);
+  $('todayBtn').hidden = onToday;
+  $('todayBtn').textContent = st.mode==='day' ? '오늘' : st.mode==='week' ? '이번 주' : '이번 달';
   document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.mode===st.mode)));
   $('bar').style.display = st.mode==='day'?'':'none';
 }
@@ -938,7 +959,9 @@ function renderSheet(){
   }
   if(en.k==='mood'){
     h+=`<div class="fld"><span class="lb">기분</span>${chipRow('score',[{v:1,l:'1 매우 나쁨'},{v:2,l:'2'},{v:3,l:'3'},{v:4,l:'4'},{v:5,l:'5 매우 좋음'}],d.score)}</div>`;
-    h+=`<div class="fld"><span class="lb">감정 (여러 개)</span>${chipRow('tags',EMOS,d.tags,true)}</div>`;
+    h+=`<div class="fld"><span class="lb">감정 (여러 개)</span>${chipRow('tags',EMOS.concat(customEmos()),d.tags,true)}
+      <div class="timerow" style="margin-top:8px"><input type="text" id="fEmo" maxlength="20" placeholder="직접 추가 (예: 서운함)" autocomplete="off" style="flex:1;min-width:0;font-family:var(--serif);font-size:16px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink)"><button class="chip" data-addemo="1">추가</button></div>
+      <div class="hint">직접 추가한 감정은 다음부터 목록에 함께 나와요. 쓴 기록에서 모두 빼면 목록에서도 사라져요.</div></div>`;
   }
   if(en.k==='period'){
     h+=`<div class="fld"><span class="lb">상태</span>${chipRow('st',['시작','진행 중','끝','부정출혈'],d.st)}</div>`;
@@ -954,6 +977,7 @@ function closeSheet(){ st.edit=null; st.clock=null; $('sheet').classList.remove(
 $('sheet').addEventListener('click', ev=>{
   const b=ev.target.closest('button'); if(!b) return;
   if(b.dataset.set){ settingsAction(b.dataset.set); return; }
+  if(b.dataset.addemo){ addEmo(); return; }
   if(clockClick(b)) return;
   if(b.dataset.act==='done'){ closeSheet(); return; }
   if(b.dataset.act==='del'){
@@ -980,6 +1004,9 @@ $('sheet').addEventListener('change', ev=>{
   if(t.id==='fEnd') updEntry(en=>{ en.e = t.value ? fromInput(t.value) : null; if(en.e!=null&&en.e<en.m) en.e+=1440; });
   if(t.id==='fNote') updEntry(en=>{ en.note=t.value.trim(); });
   if(t.id==='fMl'){ const v=Math.round(Number(t.value)); updEntry(en=>{ en.d.ml = v>0 ? v : null; }); renderSheet(); }
+});
+$('sheet').addEventListener('keydown', ev=>{
+  if(ev.target.id==='fEmo' && ev.key==='Enter' && !ev.isComposing && ev.keyCode!==229){ ev.preventDefault(); addEmo(); }
 });
 $('backdrop').addEventListener('click', closeSheet);
 document.addEventListener('keydown', ev=>{ if(ev.key==='Escape' && st.edit) closeSheet(); });
@@ -1058,7 +1085,7 @@ document.addEventListener('click', ev=>{
     else { const d=parseKey(st.sel); st.sel=keyOf(new Date(d.getFullYear(), d.getMonth()+s, 1, 12)); }
     render();
   }
-  if(act==='today'){ st.sel=todayKey(); render(); }
+  if(act==='today'){ st.sel=todayKey(); render(); window.scrollTo(0,0); }
   if(act==='copy') copyDay();
   if(act==='settings') openSettings();
   if(act==='sync'){ if(!cfg) openSettings(); else { keyBad=false; flush().then(pull); } }
