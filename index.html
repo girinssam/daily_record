@@ -327,8 +327,32 @@ async function api(action, payload, conf){
   return j;
 }
 
+// ── 기록 한 건 단위로 합치기 ──
+// 각 기록은 마지막으로 고친 시각(u)을 갖고, 지운 기록은 '지움 표시'(del)로 남겨요.
+// 두 기기의 하루를 합칠 때 같은 기록은 더 나중에 고친 쪽을, 지움 표시가 더 나중이면 지운 상태를 남겨요.
+// 그래서 한 기기가 예전 화면을 들고 있다가 저장해도 다른 기기에서 넣은 기록이 사라지지 않아요.
+function mergeDay(a, b){
+  if(!a) return b; if(!b) return a;
+  const tomb={};
+  [].concat(a.del||[], b.del||[]).forEach(t=>{ if(t&&t.id){ const u=Number(t.u)||0; if(!(tomb[t.id]>=u)) tomb[t.id]=u; } });
+  const map={};
+  [].concat(a.entries||[], b.entries||[]).forEach(en=>{
+    if(!en||!en.id) return;
+    const u=Number(en.u)||0;
+    if(tomb[en.id]!=null && tomb[en.id]>=u) return;
+    const ex=map[en.id];
+    if(!ex || u>(Number(ex.u)||0)) map[en.id]=en;
+  });
+  const entries=Object.values(map);
+  return {date:a.date||b.date, entries, seq:Math.max(a.seq||0, b.seq||0, ...entries.map(e=>e.seq||0)),
+          del:Object.keys(tomb).map(id=>({id, u:tomb[id]}))};
+}
+function sig(day){
+  if(!day) return '';
+  return (day.entries||[]).map(e=>e.id+':'+(e.u||0)).sort().join(',')+'|'+(day.del||[]).map(t=>t.id+':'+t.u).sort().join(',');
+}
+
 function saveDay(k){
-  if(days[k] && !days[k].entries.length) delete days[k];
   lsSave();
   if(!cfg){ idleStatus(); return; }
   pending.add(k); pendSave();
@@ -340,11 +364,19 @@ async function flush(){
   if(!cfg || syncing || keyBad) return;
   syncing = true;
   try{
-    for(const k of [...pending]){
-      const day = days[k] || {date:k, entries:[], seq:0};
-      await api('saveDay', {day, summary: summaryOf(k)});
-      pending.delete(k); pendSave();
+    for(let round=0; round<5 && pending.size; round++){
+      for(const k of [...pending]){
+        const sent = days[k] || {date:k, entries:[], seq:0, del:[]};
+        const sentSig = sig(sent);
+        const j = await api('saveDay', {day: sent, summary: summaryOf(k)});
+        const merged = mergeDay(days[k], j.day);      // 보내는 동안 바뀐 것도 함께
+        days[k] = merged; lsSave();
+        if(sig(merged)===sig(j.day)) pending.delete(k);  // 시트와 같아졌으면 끝
+        else if(sig(merged)===sentSig) pending.delete(k);
+        pendSave();
+      }
     }
+    render();
   }catch(e){
     if(e && e.code==='bad_key') keyBad=true;
     clearTimeout(retryTimer); if(!keyBad) retryTimer=setTimeout(flush, 30000);
@@ -359,14 +391,14 @@ async function pull(){
   try{
     const j = await api('list');
     const server = j.days || {};
-    const next = {};
-    Object.keys(server).forEach(k=>{ next[k]=server[k]; });
-    Object.keys(days).forEach(k=>{
-      if(pending.has(k)) next[k]=days[k];                       // 아직 못 올린 건 이 기기 것이 최신
-      else if(!cfg.synced && !server[k]){ next[k]=days[k]; pending.add(k); } // 처음 연결: 이 기기에만 있던 기록 올리기
+    Object.keys(server).forEach(k=>{
+      const merged = mergeDay(days[k], server[k]);
+      if(sig(merged)!==sig(server[k])) pending.add(k);   // 이 기기에만 있는 게 있으면 올리기
+      days[k] = merged;
     });
-    if(!cfg.synced){ cfg.synced=true; cfgSave(); pendSave(); }
-    days = next; lsSave(); render();
+    Object.keys(days).forEach(k=>{ if(!server[k] && (days[k].entries||[]).length) pending.add(k); });
+    if(!cfg.synced){ cfg.synced=true; cfgSave(); }
+    pendSave(); lsSave(); render();
     if(pending.size) flush(); else idleStatus();
   }catch(e){
     if(e && e.code==='bad_key') keyBad=true;
@@ -463,7 +495,7 @@ function importFile(ev){
       Object.keys(src).forEach(k=>{
         if(!/^\d{4}-\d{2}-\d{2}$/.test(k) || !src[k] || !Array.isArray(src[k].entries)) return;
         const day=mutDay(k), have=new Set(day.entries.map(e=>e.id));
-        src[k].entries.forEach(e=>{ if(e && e.id && !have.has(e.id)){ day.entries.push(e); n++; } });
+        src[k].entries.forEach(e=>{ if(e && e.id && !have.has(e.id)){ day.entries.push(Object.assign({u:Date.now()}, e)); n++; } });
         day.seq=Math.max(day.seq||0, src[k].seq||0, ...day.entries.map(e=>e.seq||0));
         saveDay(k);
       });
@@ -551,7 +583,7 @@ function parseText(text, k){
         const sym=[]; if(/잔뇨/.test(s)) sym.push('잔뇨감'); if(/통증|아프|아팠|아픔/.test(s)) sym.push('통증'); if(/화끈|따가|따끔/.test(s)) sym.push('화끈거림');
         if(sym.length) d.sym=sym;
       }
-      day.entries.push({id:Math.random().toString(36).slice(2,10), k:kk, m, e:(RANGE.includes(kk)?e:null), approx, untimed, note:s, d, seq:++day.seq});
+      day.entries.push({id:Math.random().toString(36).slice(2,10), k:kk, m, e:(RANGE.includes(kk)?e:null), approx, untimed, note:s, d, seq:++day.seq, u:Date.now()});
       added++;
     });
   });
@@ -910,7 +942,7 @@ function clockClick(b){
 function findEntry(){ if(!st.edit) return null; const day=getDay(st.edit.k); return (day.entries||[]).find(e=>e.id===st.edit.id)||null; }
 function updEntry(fn){
   const day=mutDay(st.edit.k); const en=day.entries.find(e=>e.id===st.edit.id); if(!en) return;
-  en.d=en.d||{}; fn(en); saveDay(st.edit.k);
+  en.d=en.d||{}; fn(en); en.u=Date.now(); saveDay(st.edit.k);
   if(st.mode==='day') renderDay();
 }
 function chipRow(field, opts, cur, multi){
@@ -982,7 +1014,7 @@ $('sheet').addEventListener('click', ev=>{
   if(b.dataset.act==='done'){ closeSheet(); return; }
   if(b.dataset.act==='del'){
     const k=st.edit.k, id=st.edit.id, day=mutDay(k);
-    day.entries=day.entries.filter(e=>e.id!==id); saveDay(k); closeSheet(); toast('지웠어요'); return;
+    day.entries=day.entries.filter(e=>e.id!==id); day.del=(day.del||[]).concat([{id, u:Date.now()}]); saveDay(k); closeSheet(); toast('지웠어요'); return;
   }
   const f=b.dataset.f; if(!f) return;
   if(f==='_k'){ updEntry(en=>{ en.k=b.dataset.v; if(!RANGE.includes(en.k)) en.e=null; }); renderSheet(); return; }
@@ -1027,7 +1059,7 @@ $('quick').addEventListener('click', ev=>{
   const b=ev.target.closest('[data-q]'); if(!b) return;
   const k=b.dataset.q, dk=st.sel, isToday = dk===todayKey();
   const day=mutDay(dk);
-  const en={id:Math.random().toString(36).slice(2,10), k, m: isToday?nowM():12*60, e:null, approx:!isToday, untimed:false, note:'', d:{}, seq:++day.seq};
+  const en={id:Math.random().toString(36).slice(2,10), k, m: isToday?nowM():12*60, e:null, approx:!isToday, untimed:false, note:'', d:{}, seq:++day.seq, u:Date.now()};
   day.entries.push(en); saveDay(dk); renderDay();
   if(!isToday){ openSheet(dk, en.id); st.clock=Object.assign({field:'m',phase:'h'}, mToClock(en.m)); renderSheet(); }
   else if(['mood','period','act','work','nap','move'].includes(k)) openSheet(dk, en.id);
